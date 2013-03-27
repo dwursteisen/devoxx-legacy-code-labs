@@ -26,9 +26,15 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 
 	private static int MAX_DECIMALS = 4;
 	private static Logger LOGGER = Logger.getLogger(HedgingPositionManagementImpl.class.getName());
-	private ITransactionManagerService transactionManagerService = DataAccessService.getTransactionManagerService();
 
-	@Override
+
+	private ITransactionManagerService transactionManagerService = getTransactionManagerService();
+
+    public ITransactionManagerService getTransactionManagerService() {
+        return DataAccessService.getTransactionManagerService();
+    }
+
+    @Override
 	public CheckResult<HedgingPosition> initAndSendHedgingPosition(HedgingPosition hp) throws ARPSystemException {
 		CheckResult<HedgingPosition> result = new CheckResult<HedgingPosition>();
 		try {
@@ -84,14 +90,18 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 			LOGGER.log(Level.FINEST,"Begin 3r party processing. stand by");
 		}
 		CheckResult<HedgingPosition> result;
-		result = HedgingPositionMgt.hedgingPositionMgt(hp);
+		result = hedgingPositionMgt(hp);
 		if (LOGGER.isLoggable(Level.FINEST)) {
 			LOGGER.log(Level.FINEST,"3r party processing is now finished, thank you for your patience"); // t'es con michel
 		}
 		return result;
 	}
 
-	private HedgingPosition updateHedgingPosition(HedgingPosition hp) {
+    public CheckResult<HedgingPosition> hedgingPositionMgt(final HedgingPosition hp) {
+        return HedgingPositionMgt.hedgingPositionMgt(hp);
+    }
+
+    private HedgingPosition updateHedgingPosition(HedgingPosition hp) {
 		HedgingPosition hpUpdate = SerializationUtils.clone(hp);
 		try {
 			if (hp.getType().equals(HedgingPositionTypeConst.INI)) {
@@ -113,8 +123,8 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 	}
 
 	private HedgingPosition initHedgingPosition(HedgingPosition hp) {
-		ITradingDataAccessService trading = DataAccessService.getTradingDataAccessService();
-		IHedgingPositionDataAccessService hpdas = DataAccessService.getHedgingPositionDataAccessService();
+		ITradingDataAccessService trading = getTradingDateAccessService();
+		IHedgingPositionDataAccessService hpdas = getHedingPositionDataAccessService();
 		Transaction transaction = trading.getTransactionById(hp.getId());
 		long dId = trading.getOptionalIdFromTransaction(transaction);
 
@@ -223,7 +233,15 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 		return hp;
  	}
 
-	private String getUser() {
+    public IHedgingPositionDataAccessService getHedingPositionDataAccessService() {
+        return DataAccessService.getHedgingPositionDataAccessService();
+    }
+
+    public ITradingDataAccessService getTradingDateAccessService() {
+        return DataAccessService.getTradingDataAccessService();
+    }
+
+    private String getUser() {
 		User user = UserSessionsManager.getInstance().getCurrentUser();
 		if (user !=null) {
 			return user.getName();
