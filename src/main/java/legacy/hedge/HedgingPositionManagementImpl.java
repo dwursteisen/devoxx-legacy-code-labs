@@ -131,11 +131,6 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 		String combck = dId + " " + transaction.getId() + " CONTROL: [" + getHedingPositionDataAccessService().getControl() + "]";
 
         Date valueDate = findTransactionDate(hp, transaction);
-
-		String hedgingTransactionId = new String();
-		if (!HedgingPositionTypeConst.INI.equals(hp.getType())) {
-			hedgingTransactionId = getHedingPositionDataAccessService().getHedgingTransactionIdByTransactionId(transaction.getId());
-		}
 		String userIni = getUser();
 		hp.setIkRtH(userIni);
 		switch (hp.getType()) {
@@ -199,7 +194,7 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 			case CANCEL_POSITION:
 				/*********************************** INPUT DEAL DATA *********************/
 				hp.setCodetyptkt(20);
-				hp.setHedgingTransactionId(hedgingTransactionId);
+				hp.setHedgingTransactionId(getHedingPositionDataAccessService().getHedgingTransactionIdByTransactionId(transaction.getId()));
 				/*********************************** INPUT EVENT DATA *********************/
 				hp.setValueDate(valueDate);
 				break;

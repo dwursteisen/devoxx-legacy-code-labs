@@ -55,6 +55,8 @@ public class HedgingPositionManagementImplTest {
 
         doReturn(createCheckResult()).when(service).hedgingPositionMgt(Mockito.any(HedgingPosition.class));
 
+        Mockito.doReturn("TRANSACTION_ID").when(hedgingPositionDataAccessService).getHedgingTransactionIdByTransactionId(Mockito.anyInt());
+
     }
 
     private Transaction createTransactionWithWay(final TransactionWay way) {
@@ -125,6 +127,64 @@ public class HedgingPositionManagementImplTest {
 
         Mockito.verify(hp, times(2)).setValueDate(transaction.getValueDate());
 
+    }
+
+    @Test
+    public void should_run_the_code_with_cancel_position() {
+        doReturn(createTransactionWithWay(TransactionWay.SHORT)).when(iTradingDataAccessService).getTransactionById(0);
+        HedgingPosition hp = new HedgingPosition();
+        hp.setType(HedgingPositionTypeConst.CANCEL_POSITION);
+
+        CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(hp);
+        HedgingPosition value = getHedgingPositionForThisTest(service);
+        Assertions.assertThat(value.getCodetyptkt()).isEqualTo(20);
+        Assertions.assertThat(value.getHedgingTransactionId()).isEqualTo("TRANSACTION_ID");
+
+
+    }
+
+    @Test
+    public void should_run_the_code_with_extension() {
+        doReturn(createTransactionWithWay(TransactionWay.SHORT)).when(iTradingDataAccessService).getTransactionById(0);
+        HedgingPosition hp = new HedgingPosition();
+        hp.setType(HedgingPositionTypeConst.EXT);
+
+        CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(hp);
+        HedgingPosition value = getHedgingPositionForThisTest(service);
+        Assertions.assertThat(value.getCodetyptkt()).isEqualTo(42);
+        Assertions.assertThat(value.getCombck()).isNull();
+        Assertions.assertThat(value.getHedgingTransactionId()).isNull();
+
+
+    }
+
+    @Test
+    public void should_run_the_code_with_extension_and_different_date() {
+        Transaction transaction = createTransactionWithWay(TransactionWay.SHORT);
+        transaction.setIssueDate(new Date());
+        doReturn(transaction).when(iTradingDataAccessService).getTransactionById(0);
+        HedgingPosition hp = new HedgingPosition();
+        hp.setType(HedgingPositionTypeConst.EXT);
+
+        CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(hp);
+        HedgingPosition value = getHedgingPositionForThisTest(service);
+        Assertions.assertThat(value.getCodetyptkt()).isEqualTo(42);
+        Assertions.assertThat(value.getCombck()).isNotNull();
+        Assertions.assertThat(value.getHedgingTransactionId()).isNull();
+
+    }
+
+
+    @Test
+    public void should_run_the_code_with_ini() {
+        doReturn(createTransactionWithWay(TransactionWay.SHORT)).when(iTradingDataAccessService).getTransactionById(0);
+        HedgingPosition hp = new HedgingPosition();
+        hp.setType(HedgingPositionTypeConst.INI);
+
+        CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(hp);
+        HedgingPosition value = getHedgingPositionForThisTest(service);
+        Assertions.assertThat(value.getCodetyptkt()).isEqualTo(20);
+        Assertions.assertThat(value.getHedgingTransactionId()).isNull();
     }
 
     private HedgingPosition getHedgingPositionForThisTest(final HedgingPositionManagementImpl serviceUnderTest) {
