@@ -1,5 +1,6 @@
 package legacy.hedge;
 
+import com.google.common.collect.FluentIterable;
 import legacy.DateTimeUtils;
 import legacy.dto.Modif;
 import legacy.security.User;
@@ -14,6 +15,8 @@ import org.apache.commons.lang3.SerializationUtils;
 
 import java.math.BigInteger;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -251,19 +254,18 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
             this.transaction = transaction;
         }
 
+        private Map<TransactionWay, String> transcodeTable = new HashMap<>();
+        {
+            transcodeTable.put(TransactionWay.LONG, "L");
+            transcodeTable.put(TransactionWay.SHORT, "S");
+        }
+
         public String getWay() {
-            String transactionWay = new String();
-            switch (transaction.getWay()) {
-                case LONG:
-                    transactionWay = "L";
-                    break;
-                case SHORT:
-                    transactionWay = "S";
-                    break;
-                default:
-                    break;
+            String way = transcodeTable.get(transaction.getWay());
+            if(way == null) {
+              return new String();
             }
-            return transactionWay;
+            return way;
         }
     }
 }
