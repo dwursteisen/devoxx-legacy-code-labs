@@ -5,6 +5,7 @@ import legacy.dto.Book;
 import legacy.dto.Transaction;
 import legacy.error.CheckResult;
 import legacy.service.*;
+import org.fest.assertions.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -81,30 +82,35 @@ public class HedgingPositionManagementImplTest {
     public void should_run_code_with_long_transaction() {
         doReturn(createTransactionWithWay(TransactionWay.LONG)).when(iTradingDataAccessService).getTransactionById(0);
         CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(new HedgingPosition());
-
+        HedgingPosition value = getHedgingPositionForThisTest(service);
+        Assertions.assertThat(value.getTransactionWay()).isEqualTo("L");
     }
 
     @Test
     public void should_run_code_with_short_transaction() {
         doReturn(createTransactionWithWay(TransactionWay.SHORT)).when(iTradingDataAccessService).getTransactionById(0);
         CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(new HedgingPosition());
-
+        HedgingPosition value = getHedgingPositionForThisTest(service);
+        Assertions.assertThat(value.getTransactionWay()).isEqualTo("S");
     }
 
     @Test
     public void should_run_code_with_forbiden_stock() {
-//        getRetrieveStockByActiveGK
         doReturn(createTransactionWithWay(TransactionWay.SHORT)).when(iTradingDataAccessService).getTransactionById(0);
         Mockito.doReturn(null).when(analyticalService).getRetrieveStockByActiveGK(Mockito.anyInt(), Mockito.anyString());
         Mockito.doReturn(createBook()).when(analyticalService).getBookByName("bookname-instock");
 
         CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(new HedgingPosition());
 
+        HedgingPosition value = getHedgingPositionForThisTest(service);
+        assertThat(value.getCodtyptra()).isEqualTo(new BigInteger("666"));
 
+    }
+
+    private HedgingPosition getHedgingPositionForThisTest(final HedgingPositionManagementImpl serviceUnderTest) {
         ArgumentCaptor<HedgingPosition> argument = ArgumentCaptor.forClass(HedgingPosition.class);
-        verify(service).hedgePositionBySendTo3rdParty(argument.capture());
-        assertThat(argument.getValue().getCodtyptra()).isEqualTo(new BigInteger("666"));
-
+        verify(serviceUnderTest).hedgePositionBySendTo3rdParty(argument.capture());
+        return argument.getValue();
     }
 
     private Book createBook() {

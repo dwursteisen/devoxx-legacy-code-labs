@@ -142,17 +142,8 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 		hp.setIkRtH(userIni);
 		switch (hp.getType()) {
 			case INI: {
-				String transactionWay = new String();
-				switch (transaction.getWay()) {
-					case LONG:
-						transactionWay = "L";
-						break;
-					case SHORT:
-						transactionWay = "S";
-						break;
-					default:
-						break;
-				}
+                String transactionWay = new TransactionWrapper(transaction).getWay();
+
 				Integer stock = getDataAccessService().getRetrieveStockByActiveGK(transaction.getId(), transactionWay);
 				TradingOrder evt = hpdas.getTrade(transaction.getId());
 
@@ -253,4 +244,26 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 	}
 
 
+    public static class TransactionWrapper {
+        private final Transaction transaction;
+
+        public TransactionWrapper(final Transaction transaction) {
+            this.transaction = transaction;
+        }
+
+        public String getWay() {
+            String transactionWay = new String();
+            switch (transaction.getWay()) {
+                case LONG:
+                    transactionWay = "L";
+                    break;
+                case SHORT:
+                    transactionWay = "S";
+                    break;
+                default:
+                    break;
+            }
+            return transactionWay;
+        }
+    }
 }
