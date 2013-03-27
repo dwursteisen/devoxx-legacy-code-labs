@@ -1,6 +1,5 @@
 package legacy.hedge;
 
-import com.google.common.collect.FluentIterable;
 import legacy.DateTimeUtils;
 import legacy.dto.Modif;
 import legacy.security.User;
@@ -25,8 +24,6 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 
 	private static int MAX_DECIMALS = 4;
 	private static Logger LOGGER = Logger.getLogger(HedgingPositionManagementImpl.class.getName());
-
-
 	private ITransactionManagerService transactionManagerService = getTransactionManagerService();
 
     public ITransactionManagerService getTransactionManagerService() {
@@ -124,83 +121,26 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 	public HedgingPosition initHedgingPosition(HedgingPosition hp) {
 		ITradingDataAccessService trading = getTradingDateAccessService();
         Transaction transaction = trading.getTransactionById(hp.getId());
-		long dId = trading.getOptionalIdFromTransaction(transaction);
 
-		double price = getHedingPositionDataAccessService().getPriceQuote(dId, transaction);
 		long dps = trading.computeDPSOnTheGrid(transaction.getOuterEdge());
-		String combck = dId + " " + transaction.getId() + " CONTROL: [" + getHedingPositionDataAccessService().getControl() + "]";
 
-        Date valueDate = findTransactionDate(hp, transaction);
-		String userIni = getUser();
+        String userIni = getUser();
 		hp.setIkRtH(userIni);
+        ActionParameter actionParameter = new ActionParameter(hp, trading, transaction);
 		switch (hp.getType()) {
 			case INI: {
-                String transactionWay = new TransactionWrapper(transaction).getWay();
-
-				Integer stock = getDataAccessService().getRetrieveStockByActiveGK(transaction.getId(), transactionWay);
-				TradingOrder evt = getHedingPositionDataAccessService().getTrade(transaction.getId());
-
-                int bodCode = computeBodCode(transaction, stock);
-                /*********************************** INPUT DEAL DATA *********************/
-				hp.setTransactionWay(transactionWay);
-				hp.setCodetyptkt(34);
-				hp.setCodtyptra(BigInteger.valueOf(bodCode));
-				hp.setQuantity(String.valueOf(evt.getPrice().getQuantity()));
-				hp.setBasprx(evt.getPrice().getFxPrice() / 100);
-				hp.setPrxref(evt.getPrice().getFxPrice());
-				hp.setCombck(combck);
-				/*********************************** INPUT EVENT DATA *********************/
-				hp.setTransactionId(transaction.getId());
-				hp.setValueDate(valueDate);
-                /*********************************** INPUT DEAL DATA *********************/
-                hp.setCodetyptkt(20);
-                /*********************************** INPUT EVENT DATA *********************/
-                hp.setValueDate(valueDate);
+                new IniAction(actionParameter).invoke();
                 break;
             }
 			case CANCEL_TRANSACTION:
-				/*********************************** INPUT DEAL DATA *********************/
-				hp.setCodetyptkt(20);
-				/*********************************** INPUT EVENT DATA *********************/
-				hp.setValueDate(valueDate);
-				break;
+                new CancelTransactionAction(actionParameter).invoke();
+                break;
 			case EXT:
-				TradingOrder evt = getHedingPositionDataAccessService().getTrade(transaction.getId());
-				double fxprice = -1d;
-				if (evt !=null ){
-					price = evt.getPrice().getPrice();
-					fxprice = evt.getPrice().getFxPrice();
-				}
-				if (price > 0) {
-					price = price * fxprice;
-				}
-				/*********************************** INPUT DEAL DATA *********************/
-				hp.setBasprx(price / 100);
-				hp.setPrxref(price);
-				hp.setCodetyptkt(42);
-				hp.setQuantity(String.valueOf(evt.getPrice().getQuantity()));
-				/*********************************** INPUT EVENT DATA *********************/
-				Date issueDate = transaction.getIssueDate();
-				Date tradeDate = transaction.getTradeDate();
-				if (DateTimeUtils.compareDate(issueDate,tradeDate)) {
-					hp.setCreDate(issueDate);
-					hp.setDaprx(tradeDate);
-					hp.setDatefinthe(valueDate);
-				} else {
-					hp.setCreDate(issueDate);
-					hp.setDaprx(tradeDate);
-					hp.setDatefinthe(tradeDate);
-					hp.setCombck(combck);
-				}
-				hp.setValueDate(valueDate);
+                new ExtAction(actionParameter).invoke();
 				break;
 			case CANCEL_POSITION:
-				/*********************************** INPUT DEAL DATA *********************/
-				hp.setCodetyptkt(20);
-				hp.setHedgingTransactionId(getHedingPositionDataAccessService().getHedgingTransactionIdByTransactionId(transaction.getId()));
-				/*********************************** INPUT EVENT DATA *********************/
-				hp.setValueDate(valueDate);
-				break;
+                new CancelPositionAction(actionParameter).invoke();
+                break;
 		}
 
 		return hp;
@@ -249,18 +189,15 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 		}
 	}
 
-
     public static class TransactionWrapper {
         private final Transaction transaction;
-
-        public TransactionWrapper(final Transaction transaction) {
-            this.transaction = transaction;
-        }
-
         private Map<TransactionWay, String> transcodeTable = new HashMap<>();
         {
             transcodeTable.put(TransactionWay.LONG, "L");
             transcodeTable.put(TransactionWay.SHORT, "S");
+        }
+        public TransactionWrapper(final Transaction transaction) {
+            this.transaction = transaction;
         }
 
         public String getWay() {
@@ -269,6 +206,127 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
               return new String();
             }
             return way;
+        }
+    }
+
+    private class CancelPositionAction {
+        private final HedgingPosition hp;
+        private final Transaction transaction;
+
+        public CancelPositionAction(final ActionParameter parameter) {
+            this.hp = parameter.getHp();
+            this.transaction = parameter.getTransaction();
+        }
+
+        public void invoke() {
+            /*********************************** INPUT DEAL DATA *********************/
+            hp.setCodetyptkt(20);
+            hp.setHedgingTransactionId(getHedingPositionDataAccessService().getHedgingTransactionIdByTransactionId(transaction.getId()));
+            /*********************************** INPUT EVENT DATA *********************/
+            hp.setValueDate(findTransactionDate(hp, transaction));
+        }
+    }
+
+    public class ExtAction {
+        private final HedgingPosition hp;
+        private final ITradingDataAccessService trading;
+        private final Transaction transaction;
+
+        public ExtAction(final ActionParameter parameter) {
+            this.hp = parameter.getHp();
+            this.trading = parameter.getTrading();
+            this.transaction = parameter.getTransaction();
+        }
+
+        public void invoke() {
+            long dId2 = trading.getOptionalIdFromTransaction(transaction);
+            String combck2 = dId2 + " " + transaction.getId() + " CONTROL: [" + getHedingPositionDataAccessService().getControl() + "]";
+
+            TradingOrder evt = getHedingPositionDataAccessService().getTrade(transaction.getId());
+            double fxprice = -1d;
+            double price = getHedingPositionDataAccessService().getPriceQuote(dId2, transaction);
+            if (evt !=null ){
+                price = evt.getPrice().getPrice();
+                fxprice = evt.getPrice().getFxPrice();
+            }
+            if (price > 0) {
+                price = price * fxprice;
+            }
+            /*********************************** INPUT DEAL DATA *********************/
+            hp.setBasprx(price / 100);
+            hp.setPrxref(price);
+            hp.setCodetyptkt(42);
+            hp.setQuantity(String.valueOf(evt.getPrice().getQuantity()));
+            /*********************************** INPUT EVENT DATA *********************/
+            Date issueDate = transaction.getIssueDate();
+            Date tradeDate = transaction.getTradeDate();
+            if (DateTimeUtils.compareDate(issueDate, tradeDate)) {
+                hp.setCreDate(issueDate);
+                hp.setDaprx(tradeDate);
+                hp.setDatefinthe(findTransactionDate(hp, transaction));
+            } else {
+                hp.setCreDate(issueDate);
+                hp.setDaprx(tradeDate);
+                hp.setDatefinthe(tradeDate);
+                hp.setCombck(combck2);
+            }
+            hp.setValueDate(findTransactionDate(hp, transaction));
+        }
+    }
+
+    public class CancelTransactionAction {
+        private final HedgingPosition hp;
+        private final Transaction transaction;
+
+        public CancelTransactionAction(final ActionParameter parameter) {
+            this.hp = parameter.getHp();
+            this.transaction = parameter.getTransaction();
+        }
+
+        public void invoke() {
+            /*********************************** INPUT DEAL DATA *********************/
+            hp.setCodetyptkt(20);
+            /*********************************** INPUT EVENT DATA *********************/
+            hp.setValueDate(findTransactionDate(hp, transaction));
+        }
+    }
+
+    private class IniAction {
+        private final HedgingPosition hp;
+        private final ITradingDataAccessService trading;
+        private final Transaction transaction;
+
+        public IniAction(final ActionParameter actionParameter) {
+            this.hp = actionParameter.getHp();
+            this.trading = actionParameter.getTrading();
+            this.transaction = actionParameter.getTransaction();
+        }
+
+        public void invoke() {
+            long dId = trading.getOptionalIdFromTransaction(transaction);
+            String combck = dId + " " + transaction.getId() + " CONTROL: [" + getHedingPositionDataAccessService().getControl() + "]";
+
+            String transactionWay = new TransactionWrapper(transaction).getWay();
+
+            Integer stock = getDataAccessService().getRetrieveStockByActiveGK(transaction.getId(), transactionWay);
+            TradingOrder evt = getHedingPositionDataAccessService().getTrade(transaction.getId());
+
+            int bodCode = computeBodCode(transaction, stock);
+            /*********************************** INPUT DEAL DATA *********************/
+            hp.setTransactionWay(transactionWay);
+            hp.setCodetyptkt(34);
+            hp.setCodtyptra(BigInteger.valueOf(bodCode));
+            hp.setQuantity(String.valueOf(evt.getPrice().getQuantity()));
+            hp.setBasprx(evt.getPrice().getFxPrice() / 100);
+            hp.setPrxref(evt.getPrice().getFxPrice());
+            hp.setCombck(combck);
+            /*********************************** INPUT EVENT DATA *********************/
+            hp.setTransactionId(transaction.getId());
+            hp.setValueDate(findTransactionDate(hp, transaction));
+            /*********************************** INPUT DEAL DATA *********************/
+            hp.setCodetyptkt(20);
+            /*********************************** INPUT EVENT DATA *********************/
+            hp.setValueDate(findTransactionDate(hp, transaction));
         }
     }
 }

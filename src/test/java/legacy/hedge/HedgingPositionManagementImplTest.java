@@ -144,6 +144,20 @@ public class HedgingPositionManagementImplTest {
     }
 
     @Test
+    public void should_run_the_code_with_cancel_transaction() {
+        doReturn(createTransactionWithWay(TransactionWay.SHORT)).when(iTradingDataAccessService).getTransactionById(0);
+        HedgingPosition hp = new HedgingPosition();
+        hp.setType(HedgingPositionTypeConst.CANCEL_TRANSACTION);
+
+        CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(hp);
+        HedgingPosition value = getHedgingPositionForThisTest(service);
+        Assertions.assertThat(value.getCodetyptkt()).isEqualTo(20);
+        Assertions.assertThat(value.getHedgingTransactionId()).isNull();
+
+
+    }
+
+    @Test
     public void should_run_the_code_with_extension() {
         doReturn(createTransactionWithWay(TransactionWay.SHORT)).when(iTradingDataAccessService).getTransactionById(0);
         HedgingPosition hp = new HedgingPosition();
