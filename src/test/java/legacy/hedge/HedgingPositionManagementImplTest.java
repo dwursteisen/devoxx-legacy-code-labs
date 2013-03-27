@@ -13,10 +13,10 @@ import org.mockito.*;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import java.math.BigInteger;
+import java.util.Date;
 
 import static org.fest.assertions.api.Assertions.*;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 /**
  * Created with IntelliJ IDEA.
@@ -104,6 +104,26 @@ public class HedgingPositionManagementImplTest {
 
         HedgingPosition value = getHedgingPositionForThisTest(service);
         assertThat(value.getCodtyptra()).isEqualTo(new BigInteger("666"));
+
+    }
+
+    @Test
+    public void should_get_transaction_value_when_hp_throw_exception() {
+
+        Transaction transaction = createTransactionWithWay(TransactionWay.LONG);
+        transaction.setValueDate(new Date());
+
+        doReturn(transaction).when(iTradingDataAccessService).getTransactionById(0);
+
+        HedgingPosition hp = Mockito.mock(HedgingPosition.class);
+        doThrow(new NullPointerException()).when(hp).getValueDate();
+        Mockito.doReturn(HedgingPositionTypeConst.INI).when(hp).getType();
+
+        CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(hp);
+
+        HedgingPosition position = getHedgingPositionForThisTest(service);
+
+        Mockito.verify(hp, times(2)).setValueDate(transaction.getValueDate());
 
     }
 

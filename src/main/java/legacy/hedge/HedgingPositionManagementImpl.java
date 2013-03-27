@@ -123,23 +123,18 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 
 	public HedgingPosition initHedgingPosition(HedgingPosition hp) {
 		ITradingDataAccessService trading = getTradingDateAccessService();
-		IHedgingPositionDataAccessService hpdas = getHedingPositionDataAccessService();
-		Transaction transaction = trading.getTransactionById(hp.getId());
+        Transaction transaction = trading.getTransactionById(hp.getId());
 		long dId = trading.getOptionalIdFromTransaction(transaction);
 
-		double price = hpdas.getPriceQuote(dId, transaction);
+		double price = getHedingPositionDataAccessService().getPriceQuote(dId, transaction);
 		long dps = trading.computeDPSOnTheGrid(transaction.getOuterEdge());
-		String combck = dId + " " + transaction.getId() + " CONTROL: [" + hpdas.getControl() + "]";
-		Date valueDate = new Date();
-		try {
-			valueDate = hp.getValueDate();
-		} catch(Exception e) {
-			valueDate = transaction.getValueDate();
-		}
+		String combck = dId + " " + transaction.getId() + " CONTROL: [" + getHedingPositionDataAccessService().getControl() + "]";
+
+        Date valueDate = findTransactionDate(hp, transaction);
 
 		String hedgingTransactionId = new String();
 		if (!HedgingPositionTypeConst.INI.equals(hp.getType())) {
-			hedgingTransactionId = hpdas.getHedgingTransactionIdByTransactionId(transaction.getId());
+			hedgingTransactionId = getHedingPositionDataAccessService().getHedgingTransactionIdByTransactionId(transaction.getId());
 		}
 		String userIni = getUser();
 		hp.setIkRtH(userIni);
@@ -148,7 +143,7 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
                 String transactionWay = new TransactionWrapper(transaction).getWay();
 
 				Integer stock = getDataAccessService().getRetrieveStockByActiveGK(transaction.getId(), transactionWay);
-				TradingOrder evt = hpdas.getTrade(transaction.getId());
+				TradingOrder evt = getHedingPositionDataAccessService().getTrade(transaction.getId());
 
                 int bodCode = computeBodCode(transaction, stock);
                 /*********************************** INPUT DEAL DATA *********************/
@@ -165,14 +160,14 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 			}
 			case CANCEL_TRANSACTION:
 				/*********************************** INPUT DEAL DATA *********************/
-				String hedgingPositionId = hpdas.getHedgingPositionIdByPositionKey(transaction.getPositionKey());
+				String hedgingPositionId = getHedingPositionDataAccessService().getHedgingPositionIdByPositionKey(transaction.getPositionKey());
 
 				hp.setCodetyptkt(20);
 				/*********************************** INPUT EVENT DATA *********************/
 				hp.setValueDate(valueDate);
 				break;
 			case EXT:
-				TradingOrder evt = hpdas.getTrade(transaction.getId());
+				TradingOrder evt = getHedingPositionDataAccessService().getTrade(transaction.getId());
 				double fxprice = -1d;
 				if (evt !=null ){
 					price = evt.getPrice().getPrice();
@@ -213,8 +208,18 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 		return hp;
  	}
 
+    private Date findTransactionDate(final HedgingPosition hp, final Transaction transaction) {
+        Date valueDate = new Date();
+        try {
+            valueDate = hp.getValueDate();
+        } catch(Exception e) {
+            valueDate = transaction.getValueDate();
+        }
+        return valueDate;
+    }
+
     int computeBodCode(final Transaction transaction, final Integer stock) {
-        int bodCode = 0;
+        int bodCode;
         if (stock == null) {
             Book book = getDataAccessService().getBookByName(transaction.getBookName() + "-instock");
             bodCode = Integer.parseInt(book.getPortfolioIdFromRank());
