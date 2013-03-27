@@ -152,11 +152,14 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 				/*********************************** INPUT EVENT DATA *********************/
 				hp.setTransactionId(transaction.getId());
 				hp.setValueDate(valueDate);
-			}
+                /*********************************** INPUT DEAL DATA *********************/
+                hp.setCodetyptkt(20);
+                /*********************************** INPUT EVENT DATA *********************/
+                hp.setValueDate(valueDate);
+                break;
+            }
 			case CANCEL_TRANSACTION:
 				/*********************************** INPUT DEAL DATA *********************/
-				String hedgingPositionId = getHedingPositionDataAccessService().getHedgingPositionIdByPositionKey(transaction.getPositionKey());
-
 				hp.setCodetyptkt(20);
 				/*********************************** INPUT EVENT DATA *********************/
 				hp.setValueDate(valueDate);
