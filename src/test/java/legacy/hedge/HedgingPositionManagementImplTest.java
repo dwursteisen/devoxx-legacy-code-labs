@@ -38,13 +38,16 @@ public class HedgingPositionManagementImplTest {
     @Mock
     private ITransactionManagerService transactionManagerService;
 
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private IAnalyticalService analyticalService;
+
     @Before
     public void setUp() throws Exception {
         doReturn(hedgingPositionDataAccessService).when(service).getHedingPositionDataAccessService();
         doReturn(iTradingDataAccessService).when(service).getTradingDateAccessService();
         doReturn(transactionManagerService).when(service).getTransactionManagerService();
+        doReturn(analyticalService).when(service).getDataAccessService();
 
-        doReturn(createTransactionWithWay(TransactionWay.LONG)).when(iTradingDataAccessService).getTransactionById(0);
         doReturn(createTradingOrderWithAmount(123)).when(hedgingPositionDataAccessService).getTrade(0);
 
         doReturn(createCheckResult()).when(service).hedgingPositionMgt(Mockito.any(HedgingPosition.class));
@@ -72,7 +75,15 @@ public class HedgingPositionManagementImplTest {
     }
 
     @Test
-    public void should_run_code() {
+    public void should_run_code_with_long_transaction() {
+        doReturn(createTransactionWithWay(TransactionWay.LONG)).when(iTradingDataAccessService).getTransactionById(0);
+        CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(new HedgingPosition());
+
+    }
+
+    @Test
+    public void should_run_code_with_short_transaction() {
+        doReturn(createTransactionWithWay(TransactionWay.SHORT)).when(iTradingDataAccessService).getTransactionById(0);
         CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(new HedgingPosition());
 
     }

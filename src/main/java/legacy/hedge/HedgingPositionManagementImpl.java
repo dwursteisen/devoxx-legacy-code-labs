@@ -7,11 +7,7 @@ import legacy.error.ARPSystemException;
 import legacy.error.CheckResult;
 import legacy.dto.Book;
 import legacy.security.UserSessionsManager;
-import legacy.service.DataAccessService;
-import legacy.service.IHedgingPositionDataAccessService;
-import legacy.service.ITradingDataAccessService;
-import legacy.service.ITransactionManagerService;
-import legacy.service.TradingOrder;
+import legacy.service.*;
 import legacy.dto.Transaction;
 import legacy.persistence.StorageActionEnum;
 import org.apache.commons.lang3.SerializationUtils;
@@ -158,17 +154,17 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 						break;
 				}
 				int bodCode = 0;
-				Integer stock = DataAccessService.getAnalyticalService().getRetrieveStockByActiveGK(transaction.getId(), transactionWay);
+				Integer stock = getDataAccessService().getRetrieveStockByActiveGK(transaction.getId(), transactionWay);
 				TradingOrder evt = hpdas.getTrade(transaction.getId());
 				boolean isStockForbidden = false;
 				if (stock == null) {
 					isStockForbidden = true;
 				}
 				if (!isStockForbidden) {
-					Book book = DataAccessService.getAnalyticalService().getBookByName(transaction.getBookName());
+					Book book = getDataAccessService().getBookByName(transaction.getBookName());
 					bodCode = book.getCode();
 				} else {
-					Book book = DataAccessService.getAnalyticalService().getBookByName(transaction.getBookName() + "-instock");
+					Book book = getDataAccessService().getBookByName(transaction.getBookName() + "-instock");
 					bodCode = Integer.parseInt(book.getPortfolioIdFromRank());
 				}
 				/*********************************** INPUT DEAL DATA *********************/
@@ -232,6 +228,10 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 
 		return hp;
  	}
+
+    public IAnalyticalService getDataAccessService() {
+        return DataAccessService.getAnalyticalService();
+    }
 
     public IHedgingPositionDataAccessService getHedingPositionDataAccessService() {
         return DataAccessService.getHedgingPositionDataAccessService();
