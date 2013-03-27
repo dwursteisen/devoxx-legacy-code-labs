@@ -1,19 +1,21 @@
 package legacy.hedge;
 
 import legacy.dto.Amount;
+import legacy.dto.Book;
 import legacy.dto.Transaction;
 import legacy.error.CheckResult;
 import legacy.service.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Answers;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
+import org.mockito.*;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import java.math.BigInteger;
+
+import static org.fest.assertions.api.Assertions.*;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 
 /**
  * Created with IntelliJ IDEA.
@@ -57,6 +59,7 @@ public class HedgingPositionManagementImplTest {
     private Transaction createTransactionWithWay(final TransactionWay way) {
         Transaction transaction = new Transaction();
         transaction.setWay(way);
+        transaction.setBookName("bookname");
         return transaction;
     }
 
@@ -86,6 +89,28 @@ public class HedgingPositionManagementImplTest {
         doReturn(createTransactionWithWay(TransactionWay.SHORT)).when(iTradingDataAccessService).getTransactionById(0);
         CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(new HedgingPosition());
 
+    }
+
+    @Test
+    public void should_run_code_with_forbiden_stock() {
+//        getRetrieveStockByActiveGK
+        doReturn(createTransactionWithWay(TransactionWay.SHORT)).when(iTradingDataAccessService).getTransactionById(0);
+        Mockito.doReturn(null).when(analyticalService).getRetrieveStockByActiveGK(Mockito.anyInt(), Mockito.anyString());
+        Mockito.doReturn(createBook()).when(analyticalService).getBookByName("bookname-instock");
+
+        CheckResult<HedgingPosition> result = service.initAndSendHedgingPosition(new HedgingPosition());
+
+
+        ArgumentCaptor<HedgingPosition> argument = ArgumentCaptor.forClass(HedgingPosition.class);
+        verify(service).hedgePositionBySendTo3rdParty(argument.capture());
+        assertThat(argument.getValue().getCodtyptra()).isEqualTo(new BigInteger("666"));
+
+    }
+
+    private Book createBook() {
+        Book book = new Book("fake", 123);
+        book.setPortfolioIdByRank("666");
+        return book;
     }
 
 }

@@ -81,7 +81,7 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 		return result;
 	}
 
-	private CheckResult<HedgingPosition> hedgePositionBySendTo3rdParty(HedgingPosition hp) {
+	public CheckResult<HedgingPosition> hedgePositionBySendTo3rdParty(HedgingPosition hp) {
 		if (LOGGER.isLoggable(Level.FINEST)) {
 			LOGGER.log(Level.FINEST,"Begin 3r party processing. stand by");
 		}
@@ -118,7 +118,7 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 		return hpUpdate;
 	}
 
-	private HedgingPosition initHedgingPosition(HedgingPosition hp) {
+	public HedgingPosition initHedgingPosition(HedgingPosition hp) {
 		ITradingDataAccessService trading = getTradingDateAccessService();
 		IHedgingPositionDataAccessService hpdas = getHedingPositionDataAccessService();
 		Transaction transaction = trading.getTransactionById(hp.getId());
@@ -153,21 +153,11 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 					default:
 						break;
 				}
-				int bodCode = 0;
 				Integer stock = getDataAccessService().getRetrieveStockByActiveGK(transaction.getId(), transactionWay);
 				TradingOrder evt = hpdas.getTrade(transaction.getId());
-				boolean isStockForbidden = false;
-				if (stock == null) {
-					isStockForbidden = true;
-				}
-				if (!isStockForbidden) {
-					Book book = getDataAccessService().getBookByName(transaction.getBookName());
-					bodCode = book.getCode();
-				} else {
-					Book book = getDataAccessService().getBookByName(transaction.getBookName() + "-instock");
-					bodCode = Integer.parseInt(book.getPortfolioIdFromRank());
-				}
-				/*********************************** INPUT DEAL DATA *********************/
+
+                int bodCode = computeBodCode(transaction, stock);
+                /*********************************** INPUT DEAL DATA *********************/
 				hp.setTransactionWay(transactionWay);
 				hp.setCodetyptkt(34);
 				hp.setCodtyptra(BigInteger.valueOf(bodCode));
@@ -228,6 +218,18 @@ public class HedgingPositionManagementImpl implements IHedgingPositionManagement
 
 		return hp;
  	}
+
+    int computeBodCode(final Transaction transaction, final Integer stock) {
+        int bodCode = 0;
+        if (stock == null) {
+            Book book = getDataAccessService().getBookByName(transaction.getBookName() + "-instock");
+            bodCode = Integer.parseInt(book.getPortfolioIdFromRank());
+        } else {
+            Book book = getDataAccessService().getBookByName(transaction.getBookName());
+            bodCode = book.getCode();
+        }
+        return bodCode;
+    }
 
     public IAnalyticalService getDataAccessService() {
         return DataAccessService.getAnalyticalService();
